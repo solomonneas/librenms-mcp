@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { resolveConfig, ConfigError } from "../src/config.ts";
+import { DEFAULT_REQUEST_TIMEOUT_MS, resolveConfig, ConfigError } from "../src/config.ts";
 
 describe("resolveConfig", () => {
   it("parses required env", () => {
@@ -10,6 +10,7 @@ describe("resolveConfig", () => {
     expect(cfg.url).toBe("https://librenms.local");
     expect(cfg.token).toBe("abc123");
     expect(cfg.tlsInsecure).toBe(false);
+    expect(cfg.requestTimeoutMs).toBe(DEFAULT_REQUEST_TIMEOUT_MS);
   });
 
   it("parses TLS-insecure flag (true/1/yes case-insensitive)", () => {
@@ -56,5 +57,31 @@ describe("resolveConfig", () => {
       LIBRENMS_TOKEN: "t",
     });
     expect(cfg.url).toBe("https://librenms.local");
+  });
+
+  it("parses LIBRENMS_REQUEST_TIMEOUT_MS override", () => {
+    const cfg = resolveConfig({
+      LIBRENMS_URL: "https://x",
+      LIBRENMS_TOKEN: "t",
+      LIBRENMS_REQUEST_TIMEOUT_MS: "60000",
+    });
+    expect(cfg.requestTimeoutMs).toBe(60_000);
+  });
+
+  it("throws ConfigError on invalid LIBRENMS_REQUEST_TIMEOUT_MS", () => {
+    expect(() =>
+      resolveConfig({
+        LIBRENMS_URL: "https://x",
+        LIBRENMS_TOKEN: "t",
+        LIBRENMS_REQUEST_TIMEOUT_MS: "0",
+      }),
+    ).toThrow(ConfigError);
+    expect(() =>
+      resolveConfig({
+        LIBRENMS_URL: "https://x",
+        LIBRENMS_TOKEN: "t",
+        LIBRENMS_REQUEST_TIMEOUT_MS: "500",
+      }),
+    ).toThrow(ConfigError);
   });
 });

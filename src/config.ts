@@ -3,13 +3,17 @@ import {
   ConfigError as KitConfigError,
   fromProcessEnv,
   parseBooleanEnv,
+  parseTimeoutEnv,
   type EnvReader,
 } from "@lidless-labs/effect-operator-kit";
+
+export const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
 
 export interface LibreNmsConfig {
   url: string;
   token: string;
   tlsInsecure: boolean;
+  requestTimeoutMs: number;
 }
 
 export class ConfigError extends Error {
@@ -44,6 +48,16 @@ function parseTlsInsecure(env: EnvReader): boolean {
   return false;
 }
 
+function parseRequestTimeoutMs(env: EnvReader): number {
+  return runConfigEffect(
+    parseTimeoutEnv(env, "LIBRENMS_REQUEST_TIMEOUT_MS", {
+      fallbackMs: DEFAULT_REQUEST_TIMEOUT_MS,
+      minMs: 1000,
+      unit: "ms",
+    }),
+  );
+}
+
 export function resolveConfig(env: Record<string, string | undefined>): LibreNmsConfig {
   const reader = fromProcessEnv(env as NodeJS.ProcessEnv);
 
@@ -55,5 +69,6 @@ export function resolveConfig(env: Record<string, string | undefined>): LibreNms
     url: url.replace(/\/+$/, ""),
     token,
     tlsInsecure: parseTlsInsecure(reader),
+    requestTimeoutMs: parseRequestTimeoutMs(reader),
   };
 }

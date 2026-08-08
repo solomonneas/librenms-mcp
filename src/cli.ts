@@ -67,7 +67,8 @@ Command options:
 Environment:
   LIBRENMS_URL            Base URL of the LibreNMS instance (required)
   LIBRENMS_TOKEN          X-Auth-Token API token (required)
-  LIBRENMS_TLS_INSECURE   Set truthy to skip TLS verification (self-signed hosts)`;
+  LIBRENMS_TLS_INSECURE   Set truthy to skip TLS verification (self-signed hosts)
+  LIBRENMS_REQUEST_TIMEOUT_MS  Per-request HTTP timeout in ms (default 30000, min 1000)`;
 
 function takeFlag(args: string[], name: string): boolean {
   const i = args.indexOf(name);

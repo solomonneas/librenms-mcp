@@ -4,6 +4,7 @@ import {
   exponentialRetry,
   ParseError,
   sendRequest,
+  TimeoutError,
   TransportError,
   UnexpectedStatusError,
   withRetry,
@@ -13,10 +14,12 @@ import {
   type HttpRequest,
   type OperatorError,
 } from "@lidless-labs/effect-operator-kit";
+import { DEFAULT_REQUEST_TIMEOUT_MS } from "./config.ts";
 import { boundaryErrorMessage } from "./error-message.ts";
 
 export interface LibreNmsClientOptions {
   retryDelayMs?: number;
+  fetch?: typeof fetch;
 }
 
 export class LibreNmsClientError extends Error {
@@ -37,10 +40,12 @@ export interface ClientInstanceConfig {
   url: string;
   token: string;
   tlsInsecure: boolean;
+  requestTimeoutMs?: number;
 }
 
 export class LibreNmsClient {
   private retryDelayMs: number;
+  private fetchImpl: typeof fetch;
   // Node's global fetch (undici) ignores node:https.Agent. To actually skip
   // cert verification for self-signed LibreNMS hosts we pass an undici Agent
   // via the `dispatcher` init option.
@@ -48,6 +53,7 @@ export class LibreNmsClient {
 
   constructor(private cfg: ClientInstanceConfig, opts: LibreNmsClientOptions = {}) {
     this.retryDelayMs = opts.retryDelayMs ?? 1000;
+    this.fetchImpl = opts.fetch ?? fetch;
     if (cfg.tlsInsecure && cfg.url.startsWith("https://")) {
       this.dispatcher = new UndiciAgent({ connect: { rejectUnauthorized: false } });
     }
@@ -96,7 +102,7 @@ export class LibreNmsClient {
     const ctx: HttpContext = {
       baseUrl,
       auth,
-      timeoutMs: 2_147_483_647,
+      timeoutMs: this.cfg.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS,
       fetch: this.fetchWithDispatcher,
       redact: (value) => value,
     };
@@ -127,8 +133,8 @@ export class LibreNmsClient {
   }
 
   private fetchWithDispatcher: typeof fetch = (input, init = {}) => {
-    if (!this.dispatcher) return fetch(input, init);
-    return fetch(input, { ...init, dispatcher: this.dispatcher } as RequestInit);
+    if (!this.dispatcher) return this.fetchImpl(input, init);
+    return this.fetchImpl(input, { ...init, dispatcher: this.dispatcher } as RequestInit);
   };
 }
 
@@ -143,6 +149,11 @@ function mapLibreNmsRequestError(error: OperatorError): Error {
   if (error instanceof UnexpectedStatusError) {
     if (error.status >= 500) return new LibreNmsUnreachableError(`HTTP ${error.status}`);
     return new LibreNmsClientError(error.status, responseErrorMessage(error.body));
+  }
+  if (error instanceof TimeoutError) {
+    return new LibreNmsUnreachableError(
+      `${error.method} ${error.path} timed out after ${error.timeoutMs}ms`,
+    );
   }
   if (error instanceof TransportError) {
     const cause = error.cause;
