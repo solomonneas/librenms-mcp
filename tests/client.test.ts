@@ -96,4 +96,27 @@ describe("LibreNmsClient", () => {
     expect(body.state).toBe(2);
     expect(body.note).toBe("ack");
   });
+
+  it("times out hung requests within the configured interval", async () => {
+    const neverSettlingFetch: typeof fetch = (_input, init) =>
+      new Promise((_, reject) => {
+        const signal = init?.signal;
+        if (!signal) return;
+        if (signal.aborted) {
+          reject(Object.assign(new Error("This operation was aborted"), { name: "AbortError" }));
+          return;
+        }
+        signal.addEventListener("abort", () => {
+          reject(Object.assign(new Error("This operation was aborted"), { name: "AbortError" }));
+        });
+      });
+    const timeoutMs = 50;
+    const c = new LibreNmsClient(
+      { url: "http://librenms.test", token: "t", tlsInsecure: false, requestTimeoutMs: timeoutMs },
+      { fetch: neverSettlingFetch },
+    );
+    const started = Date.now();
+    await expect(c.get("/system")).rejects.toThrow(LibreNmsUnreachableError);
+    expect(Date.now() - started).toBeLessThan(500);
+  });
 });

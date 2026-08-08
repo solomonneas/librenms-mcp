@@ -112,6 +112,7 @@ Set the following env vars. Both credential vars are required.
 | `LIBRENMS_URL` | yes | - | Base URL of your LibreNMS instance. Trailing slashes are stripped. |
 | `LIBRENMS_TOKEN` | yes | - | LibreNMS API token. Registered with the redactor on startup and masked from all output. |
 | `LIBRENMS_TLS_INSECURE` | no | `false` | Skip TLS cert validation for homelab self-signed certs. Accepts `true`/`1`/`yes`, case-insensitive. |
+| `LIBRENMS_REQUEST_TIMEOUT_MS` | no | `30000` | Per-request HTTP timeout in milliseconds. Minimum `1000`. Raise for slow installations. |
 
 ## CLI
 
@@ -132,7 +133,7 @@ librenmsctrl events list --limit 50
 librenmsctrl --json status                # raw JSON for piping
 ```
 
-Run `librenmsctrl help` for the full flag list. It reads the same `LIBRENMS_URL`, `LIBRENMS_TOKEN`, and `LIBRENMS_TLS_INSECURE` env vars as the server. Exit codes: `0` success, `1` runtime error (LibreNMS unreachable, call failed, or `status` with no system data), `2` usage error (unknown command/flag or bad value).
+Run `librenmsctrl help` for the full flag list. It reads the same `LIBRENMS_URL`, `LIBRENMS_TOKEN`, `LIBRENMS_TLS_INSECURE`, and `LIBRENMS_REQUEST_TIMEOUT_MS` env vars as the server. Exit codes: `0` success, `1` runtime error (LibreNMS unreachable, call failed, or `status` with no system data), `2` usage error (unknown command/flag or bad value).
 
 ### Starting the MCP server
 
